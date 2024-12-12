@@ -5,43 +5,57 @@ with open("input.txt", encoding="utf-8") as f:
 HEIGHT = len(garden)
 WIDTH = len(garden[0])
 
+DIRS = {
+    "N": (0, -1),
+    "E": (1, 0),
+    "S": (0, 1),
+    "W": (-1, 0)
+}
 
-DELTAS = [
-    (0, -1), # N
-    (1, 0),  # E
-    (0, 1),  # S
-    (-1, 0)  # W
-]
-
-seenA = set()
-
-def getSizeAndFenceCountA(pos, plant):
-    seenA.add(pos)
+def getSizeAndFences(pos, plant, seen):
+    seen.add(pos)
     
     size = 1
-    fenceCount = 0
+    fences = [] # tuples: x position, y position, direction
     
-    for delta in DELTAS:
+    for dir, delta in DIRS.items():
         next = (pos[0] + delta[0], pos[1] + delta[1])
         if 0 <= next[0] < WIDTH and 0 <= next[1] < HEIGHT and garden[next[1]][next[0]] == plant:
 
-            if next not in seenA:
-                nextSize, nextFenceCount = getSizeAndFenceCountA(next, plant)
+            if next not in seen:
+                nextSize, nextFences = getSizeAndFences(next, plant, seen)
                 size += nextSize
-                fenceCount += nextFenceCount
+                fences += nextFences
         else:
-            fenceCount += 1
+            fences.append((pos[0], pos[1], dir))
     
-    return size, fenceCount
-            
+    return size, fences
 
+seenA = set()
 resultA = 0
 for y, line in enumerate(garden):
     for x, plant in enumerate(line):
         if (x, y) not in seenA:
-            size, fenceCount = getSizeAndFenceCountA((x, y), plant)
-            resultA += size * fenceCount
-            #print(x, y, plant, size, fenceCount, size * fenceCount)
+            size, fences = getSizeAndFences((x, y), plant, seenA)
+            resultA += size * len(fences)
 print(resultA)
 
+def applyDiscounts(fences):
+    fencesToBuy = []
+    for fence in fences:
+        # Don't pay for a fence if...
+        if not any(other[2] == fence[2] # ... it's got the same direction as ...
+                and ((other[0] == fence[0] and other[1] - fence[1] == 1) # ... the fence of the neighbor below or ...
+                    or ((other[1] == fence[1] and other[0] - fence[0]) == 1)) for other in fences): # ... the fence of the neighbor to the right.
+            fencesToBuy.append(fence)
+    return fencesToBuy
+
 seenB = set()
+resultB = 0
+for y, line in enumerate(garden):
+    for x, plant in enumerate(line):
+        if (x, y) not in seenB:
+            size, fences = getSizeAndFences((x, y), plant, seenB)
+            discountedFences = applyDiscounts(fences)
+            resultB += size * len(discountedFences)
+print(resultB)
